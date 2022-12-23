@@ -1,5 +1,6 @@
 package org.example.repositories;
 
+import org.example.Columns;
 import org.example.HibernateFactory;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -17,8 +18,8 @@ public abstract class BaseRepo<T> {
         return list;
     }
 
-    public Boolean checkIdNotExists(int id) {
-        String hql = String.format("select 1 from %s f where f.id = :key", getTableName());
+    public Boolean checkPrimaryKeyNotExists(int id, Columns column) {
+        String hql = String.format("select 1 from %s f where f.%s = :key", getTableName(), column.getColumnName());
         Session session = HibernateFactory.getSessionFactory().openSession();
         Query<Boolean> query = session.createQuery(hql, Boolean.class);
         query.setParameter("key", id);
@@ -74,23 +75,6 @@ public abstract class BaseRepo<T> {
     }
 
 
-
-    public enum Columns {
-        FURNITURE_NAME("name"), FURNITURE_MODEL("model"), FURNITURE_COLOR("color"),
-        FURNITURE_COST("cost"), FURNITURE_LEN("length"), FURNITURE_WIDTH("width"), FURNITURE_HEIGHT("height"),
-        FURNITURE_WEIGHT("weight"),
-        ADDRESS_CITY("city"), ADDRESS_STREET("street"),
-        CUSTOMER_NAME("name");
-
-        Columns(String col) {
-            this.column = col;
-        }
-        private final String column;
-
-        public String getColumnName() {
-            return column;
-        }
-    }
     protected abstract Class<T> getType();
     protected abstract String getTableName();
 }

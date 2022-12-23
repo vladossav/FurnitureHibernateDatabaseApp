@@ -44,17 +44,22 @@ public class Furniture {
         return Objects.hash(id, name, model, cost, color, length, width, height, weight);
     }
 
+    public static List<String> columns() {
+        return List.of("№","Наименование","Модель","Стоимость",
+                "Цвет","Длина(мм)","Ширина(мм)","Высота(мм)","Вес(г)");
+    }
+
     public List<String> getRawStringList() {
         List<String> list = new ArrayList<>();
         list.add("");
-        list.add(getName());
-        list.add(getModel());
-        list.add(getCost().toString());
-        list.add(getColor());
-        list.add(getLength().toString());
-        list.add(getWidth().toString());
-        list.add(getHeight().toString());
-        list.add(getWeight().toString());
+        list.add(name);
+        list.add(model);
+        list.add(cost.toString());
+        list.add(color);
+        list.add(length.toString());
+        list.add(width.toString());
+        list.add(height.toString());
+        list.add(weight.toString());
         return list;
     }
 }
