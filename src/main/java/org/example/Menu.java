@@ -1,12 +1,8 @@
 package org.example;
 
 import de.vandermeer.asciitable.AsciiTable;
-import org.example.entities.Address;
-import org.example.entities.Customer;
-import org.example.entities.Furniture;
-import org.example.repositories.AddressRepository;
-import org.example.repositories.CustomerRepository;
-import org.example.repositories.FurnitureRepository;
+import org.example.entities.*;
+import org.example.repositories.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -18,6 +14,8 @@ public class Menu {
     FurnitureRepository furnRepo = new FurnitureRepository();
     AddressRepository addressRepo = new AddressRepository();
     CustomerRepository customerRepo = new CustomerRepository();
+    ContractRepository contractRepo = new ContractRepository();
+    SaleRepository saleRepo = new SaleRepository();
 
     public static void main(String[] args) {
         java.util.logging.Logger.getLogger("org.hibernate").setLevel(Level.SEVERE);
@@ -43,7 +41,16 @@ public class Menu {
                 case 13 -> showCustomers(customerRepo.getAll());
                 case 14 -> customerDeleteMenu();
                 case 15 -> customerSearchMenu();
-
+                case 21 -> contractAddMenu();
+                case 22 -> contractEditMenu();
+                case 23 -> showContracts(contractRepo.getAll());
+                case 24 -> contractDeleteMenu();
+                case 25 -> contractSearchMenu();
+                case 31 -> saleAddMenu();
+                case 32 -> saleEditMenu();
+                case 33 -> showSales(saleRepo.getAll());
+                case 34 -> saleDeleteMenu();
+                case 35 -> saleSearchMenu();
             }
         }
     }
@@ -427,33 +434,424 @@ public class Menu {
 
     void contractAddMenu() {
         System.out.println("\nДобавление договора");
-        System.out.print("Введите номер договора: ");
-        Integer num = Integer.parseInt(getInputString());
-        System.out.print("Введите код заказчика: ");
-        Integer code = Integer.parseInt(getInputString());
-        System.out.print("Введите дату регистрации: ");
-        String city = getInputString();
-        System.out.print("Введите дату выполнения: ");
-        String street = getInputString();
+        boolean flag = true;
+        Integer num = -1;
+        while(flag) {
+            System.out.print("Введите номер договора: ");
+            num = getInputInteger();
+            if(contractRepo.checkPrimaryKeyNotExists(num, Columns.CONTRACT_NUM)) flag = false;
+            else System.out.println("Договор с данным номером уже существует!");
+        }
+        flag = true;
+        Integer code = -1;
+        while(flag) {
+            System.out.print("Введите код заказчика: ");
+             code = getInputInteger();
+            if(customerRepo.checkPrimaryKeyNotExists(code, Columns.CUSTOMER_CODE))
+                System.out.println("Заказчика с таким кодом не существует!");
+            else flag = false;
+        }
+        System.out.println("Ввод даты регистрации");
+        String regDate = getInputDate();
+        System.out.println("Ввод даты выполнения");
+        String doneDate = getInputDate();
+
+        Contract contract = new Contract(num,code,regDate,doneDate);
+        contractRepo.save(contract);
+        System.out.println("Объект добавлен!");
     }
 
     void contractEditMenu() {
-        System.out.println("\nИзменение таблицы Договор");
-        System.out.println("1. Номер договора");
-        System.out.println("2. Код покупателя");
-        System.out.println("3. Дата регистрации");
-        System.out.println("4. Дата выполнения");
-        System.out.println("0. Выйти в главное меню");
-        System.out.println("Введите пункт меню: ");
+        System.out.println("\nИзменение таблицы Договоры");
+        System.out.print("Введите номер строки для изменения: ");
+        int numberStr = getInputIntegerLessMax(contractRepo.contractList.size());
+        Contract contract = contractRepo.contractList.get(numberStr);
+
+        while (true) {
+            System.out.println("\nИзменение таблицы Договоры");
+            showRaw(contract.getRawStringList());
+            System.out.println("1. Номер договора");
+            System.out.println("2. Код покупателя");
+            System.out.println("3. Дата регистрации");
+            System.out.println("4. Дата выполнения");
+            System.out.println("5. Сохранить изменения и выйти");
+            System.out.println("0. Выйти в главное меню");
+            System.out.println("Введите пункт меню: ");
+            int n = getInputShort();
+
+            switch (n) {
+                case 0 -> {
+                    return;
+                }
+                case 1 -> {
+                    boolean flagCode = true;
+                    Integer number = -1;
+                    while(flagCode) {
+                        System.out.print("Введите новый номер договора: ");
+                        number = getInputInteger();
+                        if(contractRepo.checkPrimaryKeyNotExists(number, Columns.CONTRACT_NUM)) flagCode = false;
+                        else System.out.println("Договор с данным номером уже существует!");
+                    }
+                    contract.setNumber(number);
+                }
+                case 2 -> {
+                    boolean flagCode = true;
+                    Integer code = -1;
+                    while(flagCode) {
+                        System.out.print("Введите новый код заказчика: ");
+                        code = getInputInteger();
+                        if(customerRepo.checkPrimaryKeyNotExists(code, Columns.CUSTOMER_CODE))
+                            System.out.println("Заказчика с таким кодом не существует!");
+                        else flagCode = false;
+                    }
+                    contract.setCustomerCode(code);
+                }
+                case 3-> {
+                    System.out.println("Ввод новой даты регистрации");
+                    String regDate = getInputDate();
+                   contract.setRegDate(regDate);
+                }
+                case 4-> {
+                    System.out.println("Ввод новой даты выполнения");
+                    String doneDate = getInputDate();
+                    contract.setDoneDate(doneDate);
+                }
+                case 5-> {
+                    contractRepo.edit(contract);
+                    System.out.println("Изменения сохранены!");
+                    return;
+                }
+                default -> System.out.println("\nВведен некорректный пункт меню!");
+            }
+        }
+    }
+
+    void showContracts(List<Contract> list) {
+        if (list.isEmpty()) {
+            System.out.println("\nДанная таблица пуста!");
+            return;
+        }
+        AsciiTable table = new AsciiTable();
+        table.addRule();
+        table.addRow(Contract.columns());
+        for (int i = 0; i < list.size(); i++) {
+            table.addRule();
+            List<String> lt = list.get(i).getRawStringList();
+            lt.set(0, String.valueOf(i));
+            table.addRow(lt);
+        }
+        table.addRule();
+        String tableStr = table.render(60);
+        System.out.println(tableStr);
+    }
+
+    void contractDeleteMenu() {
+        System.out.println("\nУдаление из таблицы Договоры");
+        System.out.print("Введите номер строки для удаления: ");
+        int numberStr = getInputIntegerLessMax(contractRepo.contractList.size());
+        Contract contract = contractRepo.contractList.get(numberStr);
+        contractRepo.delete(contract);
+        System.out.printf("\nСтрока %d успешно удалена!\n", numberStr);
+    }
+
+    void contractSearchMenu() {
+        while (true) {
+            System.out.println("\nПоиск по таблице Договоры");
+            System.out.println("1. Номер договора");
+            System.out.println("2. Код покупателя");
+            System.out.println("3. Дата регистрации");
+            System.out.println("4. Дата выполнения");
+            System.out.println("0. Выход");
+            System.out.print("Введите пункт меню: ");
+            int num = getInputShort();
+            if (num != 0) System.out.print("Введите поисковой запрос: ");
+            String str = "";
+            List<Contract> result = null;
+            switch (num) {
+                case 0 -> {
+                    return;
+                }
+                case 1 -> { //номер договора
+                    Integer number = getInputInteger();
+                    str = number.toString();
+                    result = contractRepo.searchByRange100(str, Columns.CONTRACT_NUM);
+                }
+                case 2 -> { //код покупателя
+                    Integer code = getInputInteger();
+                    str = code.toString();
+                    result = contractRepo.searchByRange100(str, Columns.CONTRACT_CUSTOMER_CODE);
+                }
+                case 3-> { //дата регистрации
+                    str = getInputString();
+                    result = contractRepo.searchByString(str, Columns.CONTRACT_REG_DATE);
+                }
+                case 4-> { //дата выполнения
+                    str = getInputString();
+                    result = contractRepo.searchByString(str, Columns.CONTRACT_DONE_DATE);
+                }
+                default -> System.out.println("\nВведен некорректный пункт меню!");
+            }
+            System.out.println("Результаты поиска по запросу \"" + str + "\"");
+            if (result.isEmpty() || result.equals(null)) System.out.println("\nНичего не найдено!");
+            else showContracts(result);
+        }
+    }
+
+    void saleAddMenu() {
+        System.out.println("\nДобавление Продажи");
+        boolean flag = true;
+        Integer num = -1;
+        while(flag) {
+            System.out.print("Введите номер договора: ");
+            num = getInputInteger();
+            if(contractRepo.checkPrimaryKeyNotExists(num, Columns.CONTRACT_NUM))
+                System.out.println("Договора с данным номером не существует!");
+            else flag = false;
+        }
+        
+        Furniture furniture = null;
+        System.out.println("Выбор мебели");
+        System.out.println("1. Выбрать из всего списка");
+        System.out.println("2. Воспользоваться поиском");
+        System.out.println("0. Отмена операции и выход в главное меню");
+        switch (getInputShort()) {
+            case 0 -> {
+                return;
+            }
+            case 1 -> {
+                showFurniture(furnRepo.getAll());
+                System.out.print("Введите номер строки для добавления: ");
+                int numStr = getInputIntegerLessMax(furnRepo.furnList.size());
+                furniture = furnRepo.furnList.get(numStr);
+            }
+            case 2 -> {
+                while (true) {
+                    System.out.println("\nПоиск по таблице Мебель");
+                    System.out.println("1. Название");
+                    System.out.println("2. Модель");
+                    System.out.println("3. Цвет");
+                    System.out.print("Введите пункт меню: ");
+                    int n = getInputShort();
+                    if (n != 0) System.out.print("Введите поисковой запрос: ");
+                    String str = "";
+                    List<Furniture> result = null;
+                    switch (n) {
+                        case 1 -> { //название
+                            str = getInputString();
+                            result = furnRepo.searchByString(str, Columns.FURNITURE_NAME);
+                        }
+                        case 2 -> { //модель
+                            str = getInputString();
+                            result = furnRepo.searchByString(str, Columns.FURNITURE_MODEL);
+                        }
+                        case 3 -> { //color
+                            str = getInputString();
+                            result = furnRepo.searchByString(str, Columns.FURNITURE_COLOR);
+                        }
+                        default -> System.out.println("\nВведен некорректный пункт меню!");
+                    }
+                    System.out.println("Результаты поиска по запросу \"" + str + "\"");
+                    if (result.isEmpty() || result.equals(null)) System.out.println("\nНичего не найдено!");
+                    else {
+                        showFurniture(result);
+                        System.out.print("Введите номер строки для добавления: ");
+                        int numStr = getInputIntegerLessMax(result.size());
+                        furniture = result.get(numStr);
+                        break;
+                    }
+                }
+            }
+        }
+        flag = true;
+        int id = 0;
+        while(flag) {
+            id = getRandomInt();
+            if(saleRepo.checkPrimaryKeyNotExists(id, Columns.SALE_ID)) flag = false;
+        }
+        System.out.print("Введите количество товара: ");
+        Integer amount = getInputInteger();
+        Sale sale = new Sale(id, num, furniture, amount);
+        saleRepo.save(sale);
+        System.out.println("Объект добавлен!");
     }
 
     void saleEditMenu() {
         System.out.println("\nИзменение таблицы Продажи");
-        System.out.println("1. Номер договора");
-        System.out.println("2. Количество заказов");
-        System.out.println("3. Мебель");
-        System.out.println("0. Выйти в главное меню");
-        System.out.println("Введите пункт меню: ");
+        System.out.print("Введите номер строки для изменения: ");
+        int numberStr = getInputIntegerLessMax(saleRepo.saleList.size());
+        Sale sale = saleRepo.saleList.get(numberStr);
+
+        while (true) {
+            System.out.println("\nИзменение таблицы Продажи");
+            showRaw(sale.getRawStringList());
+            System.out.println("1. Номер договора");
+            System.out.println("2. Мебель");
+            System.out.println("3. Количество заказов");
+            System.out.println("4. Сохранить изменения и выйти");
+            System.out.println("0. Выйти в главное меню");
+            System.out.println("Введите пункт меню: ");
+            int nn = getInputShort();
+
+            switch (nn) {
+                case 0 -> {
+                    return;
+                }
+                case 1 -> {
+                    boolean flag = true;
+                    Integer num = -1;
+                    while(flag) {
+                        System.out.print("Введите номер договора: ");
+                        num = getInputInteger();
+                        if(contractRepo.checkPrimaryKeyNotExists(num, Columns.CONTRACT_NUM))
+                            System.out.println("Договора с данным номером не существует!");
+                        else flag = false;
+                    }
+                    sale.setContractNum(num);
+                }
+                case 2 -> {
+                    Furniture furniture = null;
+                    System.out.println("Выбор новой мебели");
+                    System.out.println("1. Выбрать из всего списка");
+                    System.out.println("2. Воспользоваться поиском");
+                    System.out.println("0. Отмена операции и выход в главное меню");
+                    switch (getInputShort()) {
+                        case 0 -> {
+                            return;
+                        }
+                        case 1 -> {
+                            showFurniture(furnRepo.getAll());
+                            System.out.print("Введите номер строки для добавления: ");
+                            int numStr = getInputIntegerLessMax(furnRepo.furnList.size());
+                            furniture = furnRepo.furnList.get(numStr);
+                        }
+                        case 2 -> {
+                            while (true) {
+                                System.out.println("\nПоиск по таблице Мебель");
+                                System.out.println("1. Название");
+                                System.out.println("2. Модель");
+                                System.out.println("3. Цвет");
+                                System.out.print("Введите пункт меню: ");
+                                int n = getInputShort();
+                                if (n != 0) System.out.print("Введите поисковой запрос: ");
+                                String str = "";
+                                List<Furniture> result = null;
+                                switch (n) {
+                                    case 1 -> { //название
+                                        str = getInputString();
+                                        result = furnRepo.searchByString(str, Columns.FURNITURE_NAME);
+                                    }
+                                    case 2 -> { //модель
+                                        str = getInputString();
+                                        result = furnRepo.searchByString(str, Columns.FURNITURE_MODEL);
+                                    }
+                                    case 3 -> { //color
+                                        str = getInputString();
+                                        result = furnRepo.searchByString(str, Columns.FURNITURE_COLOR);
+                                    }
+                                    default -> System.out.println("\nВведен некорректный пункт меню!");
+                                }
+                                System.out.println("Результаты поиска по запросу \"" + str + "\"");
+                                if (result.isEmpty() || result.equals(null)) System.out.println("\nНичего не найдено!");
+                                else {
+                                    showFurniture(result);
+                                    System.out.print("Введите номер строки для добавления: ");
+                                    int numStr = getInputIntegerLessMax(result.size());
+                                    furniture = result.get(numStr);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    sale.setFurniture(furniture);
+                }
+                case 3-> {
+                    System.out.print("Введите количество товара: ");
+                    Integer amount = getInputInteger();
+                    sale.setAmount(amount);
+                }
+                case 4-> {
+                    saleRepo.edit(sale);
+                    System.out.println("Изменения сохранены!");
+                    return;
+                }
+                default -> System.out.println("\nВведен некорректный пункт меню!");
+            }
+        }
+    }
+
+    void saleDeleteMenu() {
+        System.out.println("\nУдаление из таблицы Продажи");
+        System.out.print("Введите номер строки для удаления: ");
+        int numberStr = getInputIntegerLessMax(saleRepo.saleList.size());
+        Sale sale = saleRepo.saleList.get(numberStr);
+        saleRepo.delete(sale);
+        System.out.printf("\nСтрока %d успешно удалена!\n", numberStr);
+    }
+
+    void saleSearchMenu() {
+        while (true) {
+            System.out.println("\nПоиск по таблице Продажи");
+            System.out.println("1. Номер договора");
+            System.out.println("2. Название мебели");
+            System.out.println("3. Модель мебели");
+            System.out.println("4. Цвет мебели");
+            System.out.println("5. Количество заказов");
+            System.out.println("0. Выход");
+            System.out.print("Введите пункт меню: ");
+            int num = getInputShort();
+            if (num != 0) System.out.print("Введите поисковой запрос: ");
+            String str = "";
+            List<Sale> result = null;
+            switch (num) {
+                case 0 -> {
+                    return;
+                }
+                case 1 -> { //номер договора
+                    Integer code = getInputInteger();
+                    str = code.toString();
+                    result = saleRepo.searchByRange100(str, Columns.SALE_CONTRACT_NUM);
+                }
+                case 2 -> { //название
+                    str = getInputString();
+                    result = saleRepo.searchByFurnitureString(str, Columns.FURNITURE_NAME);
+                }
+                case 3-> { //модель
+                    str = getInputString();
+                    result = saleRepo.searchByFurnitureString(str, Columns.FURNITURE_MODEL);
+                }
+                case 4-> { //цвет
+                    str = getInputString();
+                    result = saleRepo.searchByFurnitureString(str, Columns.FURNITURE_COLOR);
+                }
+                case 5-> { //количество
+                    str = getInputPhone();
+                    result = saleRepo.searchByRange100(str, Columns.SALE_AMOUNT);
+                }
+                default -> System.out.println("\nВведен некорректный пункт меню!");
+            }
+            System.out.println("Результаты поиска по запросу \"" + str + "\"");
+            if (result.isEmpty() || result.equals(null)) System.out.println("\nНичего не найдено!");
+            else showSales(result);
+        }
+    }
+
+    void showSales(List<Sale> list) {
+        if (list.isEmpty()) {
+            System.out.println("\nДанная таблица пуста!");
+            return;
+        }
+        AsciiTable table = new AsciiTable();
+        table.addRule();
+        table.addRow(Sale.columns());
+        for (int i = 0; i < list.size(); i++) {
+            table.addRule();
+            List<String> lt = list.get(i).getRawStringList();
+            lt.set(0, String.valueOf(i));
+            table.addRow(lt);
+        }
+        table.addRule();
+        String tableStr = table.render(100);
+        System.out.println(tableStr);
     }
 
     void showRaw(List<String> str) {
@@ -462,6 +860,38 @@ public class Menu {
             System.out.print(str.get(i) + "  ");
         }
         System.out.println();
+    }
+
+    String getInputDate() {
+        boolean flag = true;
+        String inputDate;
+        short day = 0, month = 0, year = 0;
+        while (flag) {
+            System.out.print("Введите день: ");
+            day = getInputShort();
+            System.out.print("Введите месяц: ");
+            month = getInputShort();
+            System.out.print("Введите год: ");
+            year = getInputShort();
+            if (!isValidDate(day,month,year)) System.out.println("Дата введена неверно! Попробуйте еще раз");
+            else flag = false;
+        }
+        String format = "%d.%d.%d";
+        if (day < 10) format = "0%d.%d.%d";
+        if (month < 10) format = "%d.0%d.%d";
+        if (day < 10 && month < 10) format = "0%d.0%d.%d";
+        inputDate = String.format(format, day,month, year);
+        return inputDate;
+    }
+
+    boolean isValidDate(short day, short month, short year) {
+        short[] daysInMonth = { 0,31,28,31,30,31,30,31,31,30,31,30,31 };
+
+        if (year < 2020 || year > 2050) return false;
+        if (year % 4 == 0)
+            daysInMonth[2] = 29;
+        if ((month < 1) || (month > 12)) return false;
+        return (day >= 1) && (day <= daysInMonth[month]);
     }
 
     String getInputString() {

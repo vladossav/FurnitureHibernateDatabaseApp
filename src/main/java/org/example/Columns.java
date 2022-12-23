@@ -8,11 +8,12 @@ public enum Columns {
     //furniture_number
     FURNITURE_COST("cost"), FURNITURE_LEN("length"), FURNITURE_WIDTH("width"), FURNITURE_HEIGHT("height"),
     FURNITURE_WEIGHT("weight"),
-
-    ADDRESS_CITY("city"), ADDRESS_STREET("street"),
-    CUSTOMER_NAME("name"), CUSTOMER_PHONE("phoneNum");
-
-
+    //customer
+    CUSTOMER_NAME("name"), CUSTOMER_PHONE("phoneNum"), ADDRESS_CITY("city"), ADDRESS_STREET("street"),
+    //contract
+    CONTRACT_CUSTOMER_CODE("customerCode"), CONTRACT_REG_DATE("regDate"),CONTRACT_DONE_DATE("doneDate"),
+    //sale
+    SALE_CONTRACT_NUM("contractNum"), SALE_AMOUNT("amount");
     Columns(String col) {
         this.column = col;
     }
